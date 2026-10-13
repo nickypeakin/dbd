@@ -2,6 +2,7 @@
 
 import * as THREE from 'three';
 import { Net } from './net.js';
+import { P2PNet } from './p2p.js';
 import { profile, saveProfile } from './store.js';
 import { audio } from './audio.js';
 import { initRenderer, renderer } from './gfx/renderer.js';
@@ -13,7 +14,7 @@ import { MainMenu } from './ui/menu.js';
 import { LobbyUI } from './ui/lobby.js';
 import { toast, ui, h } from './ui/dom.js';
 import { applyAudioSettings } from './ui/settings.js';
-import { SURVIVORS, KILLERS } from '/shared/data.js';
+import { SURVIVORS, KILLERS } from '../shared/data.js';
 
 const DISTRESS_FILTER = `
 <svg width="0" height="0" style="position:absolute">
@@ -27,7 +28,10 @@ class App {
   constructor() {
     const params = new URLSearchParams(location.search);
     this.noRender = params.has('norender');
-    this.net = new Net();
+    // The Node server build talks to /ws; the static build (GitHub Pages) hosts
+    // games in the browser and connects friends peer-to-peer.
+    const netMode = document.querySelector('meta[name="dbd-net"]');
+    this.net = netMode && netMode.content === 'p2p' ? new P2PNet() : new Net();
     this.mode = 'splash';
     this.portraits = {};
     this.game = null;
@@ -98,6 +102,13 @@ class App {
     n.on('chat', (m) => this.lobbyUI.addChat(m.msg));
     n.on('left', () => { this.inLobby = false; this.showMenu(); });
     n.on('kicked', () => { this.inLobby = false; toast('You were removed from the lobby.'); this.showMenu(); });
+    n.on('hostLost', () => {
+      toast('Lost connection to the host. The lobby has closed.', 6000);
+      if (this.game) this.endGame();
+      this.inLobby = false;
+      this.showMenu();
+    });
+    n.on('hostStatus', () => { if (this.screen === 'lobby') this.lobbyUI.renderInfo(); });
     n.on('match', (m) => this.startGame(m.info));
     n.on('go', () => {
       if (this.game && this.game.built) this.game.go();
@@ -150,7 +161,7 @@ class App {
   async startGame(info) {
     this.clearScreen();
     this.screen = 'loading';
-    const { REALMS } = await import('/shared/data.js');
+    const { REALMS } = await import('../shared/data.js');
     const realm = REALMS[info.map.realm];
     const tips = [
       'Hit great skill checks for bonus progress. Missing one makes the generator explode and alerts the killer.',

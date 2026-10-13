@@ -3,9 +3,15 @@
 
 import { h, ui, esc, $, toast, copyText } from './dom.js';
 import { perkIcon, ITEM_ICONS, STATUS_ICONS } from './icons.js';
-import { SURVIVORS, KILLERS, PERKS, ITEMS, REALMS, SURVIVOR_PERK_IDS, KILLER_PERK_IDS, DIFFICULTIES } from '/shared/data.js';
+import { SURVIVORS, KILLERS, PERKS, ITEMS, REALMS, SURVIVOR_PERK_IDS, KILLER_PERK_IDS, DIFFICULTIES } from '../../shared/data.js';
 import { profile, saveProfile } from '../store.js';
 import { audio } from '../audio.js';
+
+const P2P_STATUS = {
+  connecting: 'Opening lobby to friends...',
+  online: 'Friends can join &mdash; keep this tab open, your browser is the server',
+  offline: 'Friends can&rsquo;t join right now (no connection to matchmaking). Bots will still play.',
+};
 
 export function perkHTML(id, big = false) {
   const p = PERKS[id];
@@ -117,25 +123,28 @@ export class LobbyUI {
     const L = this.lobby;
     const me = this.me;
     const host = me && L.hostId === me.id;
+    const net = this.app.net;
+    const p2p = !!net.p2p;
     const box = $('.lobby-info', this.el);
     const realm = L.settings.realm === 'random' ? 'Random realm' : REALMS[L.settings.realm].name;
     box.innerHTML = `
-      <div class="label">${L.settings.public ? 'Public' : 'Private'} lobby &bull; code</div>
+      <div class="label">${p2p ? 'Lobby' : L.settings.public ? 'Public lobby' : 'Private lobby'} &bull; code</div>
       <div class="title-row"><span class="code">${esc(L.code)}</span></div>
       <div class="lname">${esc(L.settings.name)}</div>
       <div class="meta">${esc(realm)} &bull; ${esc(L.settings.difficulty)} bots</div>
       <div class="invite"><button class="btn ghost small cc">Copy code</button><button class="btn ghost small cl">Copy invite link</button></div>
+      ${p2p && host && net.hostStatus ? `<div class="p2p-status ${net.hostStatus}">${P2P_STATUS[net.hostStatus]}</div>` : ''}
       ${host ? `<div class="host-settings">
         <span class="label">Bots</span><select class="select diff">${DIFFICULTIES.map((d) => `<option ${d === L.settings.difficulty ? 'selected' : ''}>${d}</option>`).join('')}</select>
         <span class="label">Realm</span><select class="select realm"><option value="random">Random</option>${Object.entries(REALMS).map(([k, r]) => `<option value="${k}" ${k === L.settings.realm ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select>
-        <span class="label">Public</span><span><input type="checkbox" class="check pub" ${L.settings.public ? 'checked' : ''}> <button class="btn ghost small reroll" style="margin-left:10px">Shuffle bots</button></span>
+        ${p2p ? '<span></span>' : '<span class="label">Public</span>'}<span>${p2p ? '' : `<input type="checkbox" class="check pub" ${L.settings.public ? 'checked' : ''}> `}<button class="btn ghost small reroll" ${p2p ? '' : 'style="margin-left:10px"'}>Shuffle bots</button></span>
       </div>` : ''}`;
     $('.cc', box).addEventListener('click', () => copyText(L.code).then(() => toast('Lobby code copied')));
-    $('.cl', box).addEventListener('click', () => copyText(`${location.origin}/?join=${L.code}`).then(() => toast('Invite link copied — send it to your friends!')));
+    $('.cl', box).addEventListener('click', () => copyText(`${location.origin}${location.pathname}?join=${L.code}`).then(() => toast('Invite link copied — send it to your friends!')));
     if (host) {
       $('.diff', box).addEventListener('change', (e) => this.app.net.send({ t: 'settings', settings: { difficulty: e.target.value } }));
       $('.realm', box).addEventListener('change', (e) => this.app.net.send({ t: 'settings', settings: { realm: e.target.value } }));
-      $('.pub', box).addEventListener('change', (e) => this.app.net.send({ t: 'settings', settings: { public: e.target.checked } }));
+      if (!p2p) $('.pub', box).addEventListener('change', (e) => this.app.net.send({ t: 'settings', settings: { public: e.target.checked } }));
       $('.reroll', box).addEventListener('click', () => this.app.net.send({ t: 'settings', settings: { rerollBots: true } }));
     }
   }

@@ -103,13 +103,15 @@ export class MainMenu {
         });
       }
     } else if (a === 'friends') {
+      const p2p = !!this.app.net.p2p;
       const p = this.sub(`
         <h2>Play with friends</h2>
         <p>Host a lobby and share the code or invite link. Up to 5 players &mdash; bots fill any empty slot.</p>
+        ${p2p ? '<p class="note">Your browser hosts the match, so keep the game open while your friends play. Nothing to install &mdash; they just open the invite link.</p>' : ''}
         <div class="field"><span class="label">Lobby name</span><input class="input lname" maxlength="28" value="${esc((profile.name || 'My') + "'s Lobby")}"></div>
-        <div class="row" style="margin-bottom:16px">
+        ${p2p ? '' : `<div class="row" style="margin-bottom:16px">
           <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" class="check pub" checked> <span>Show in public lobby list</span></label>
-        </div>
+        </div>`}
         <div class="row" style="gap:10px;margin-bottom:22px">
           <button class="btn host-s">Host as Survivor</button>
           <button class="btn ghost host-k">Host as Killer</button>
@@ -119,14 +121,14 @@ export class MainMenu {
           <input class="input code" maxlength="5" placeholder="CODE">
           <button class="btn join">Join</button>
         </div>
-        <div style="margin-top:18px" class="row"><span class="label" style="flex:1">Public lobbies</span><button class="btn ghost small refresh">Refresh</button></div>
-        <div class="lobby-list"><div class="empty">Searching...</div></div>`);
+        ${p2p ? '' : `<div style="margin-top:18px" class="row"><span class="label" style="flex:1">Public lobbies</span><button class="btn ghost small refresh">Refresh</button></div>
+        <div class="lobby-list"><div class="empty">Searching...</div></div>`}`);
       const host = (role) => {
         this.ensureName();
         audio.play('boom', { vol: 0.35 });
         profile.role = role;
         saveProfile();
-        this.app.createLobby(role, { public: $('.pub', p).checked, name: $('.lname', p).value });
+        this.app.createLobby(role, { public: !p2p && $('.pub', p).checked, name: $('.lname', p).value });
       };
       $('.host-s', p).addEventListener('click', () => host('survivor'));
       $('.host-k', p).addEventListener('click', () => host('killer'));
@@ -141,11 +143,13 @@ export class MainMenu {
         this.app.joinLobby(c);
       };
       $('.join', p).addEventListener('click', join);
-      const refresh = () => this.app.net.send({ t: 'list' });
-      $('.refresh', p).addEventListener('click', refresh);
-      refresh();
-      this.listTimer = setInterval(refresh, 4000);
-      this.listPanel = p;
+      if (!p2p) {
+        const refresh = () => this.app.net.send({ t: 'list' });
+        $('.refresh', p).addEventListener('click', refresh);
+        refresh();
+        this.listTimer = setInterval(refresh, 4000);
+        this.listPanel = p;
+      }
     } else if (a === 'settings') {
       this.sub(null);
       openSettings(this.app);

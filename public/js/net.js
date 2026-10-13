@@ -10,8 +10,9 @@ export class Net {
   }
 
   connect() {
-    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    this.ws = new WebSocket(`${proto}//${location.host}/ws`);
+    const url = new URL('ws', location.href);
+    url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    this.ws = new WebSocket(url.href);
     this.ws.onopen = () => {
       this.open = true;
       for (const m of this.queue) this.ws.send(m);

@@ -5,16 +5,46 @@ A browser-based, multiplayer, 1 vs 4 asymmetric horror game inspired by
 generators, open an exit gate and escape. Play with friends over the
 internet or LAN; any empty seat in the lobby is filled by a bot.
 
+**Play it: <https://nickypeakin.github.io/dbd/>**. Nothing to install, it
+runs in Chrome, Edge or Firefox on a computer with a keyboard and mouse.
+
 Everything — models, textures, sounds and music — is generated in code, so
 there are no asset downloads. The only dependencies are `three` (3D), `ws`
-(networking) and two open-source fonts.
+and `peerjs` (networking) and two open-source fonts.
 
 > **Fan project.** Not affiliated with, endorsed by or connected to
 > Behaviour Interactive or Unity Technologies. "Dead by Daylight" is a
 > trademark of Behaviour Interactive Inc. The "Made with Unity" splash is a
 > parody start-up screen; the game is plain JavaScript and WebGL.
 
-## Quick start
+## Playing online (GitHub Pages)
+
+The link above is a static copy of the game that GitHub hosts for free, and
+it stays up whether or not your computer is on. There's no game server
+behind it: the browser of whoever hosts a lobby runs the match.
+
+- **Solo:** click **Play**, and bots fill every other seat. The match runs in
+  your own tab, so it works even on a slow connection.
+- **With friends:** one person clicks **Play with Friends → Host** and sends
+  the invite link or 5-letter code. Friends connect straight to the host's
+  browser over WebRTC. The free [PeerJS](https://peerjs.com) service is only
+  used to find each other by code. The host has to keep the game open while
+  everyone plays; if the host leaves, the lobby closes. If a friend's
+  connection drops mid-match, a bot takes over their character.
+- The public lobby browser is only in the self-hosted server version below.
+
+### Publishing setup (one time)
+
+`.github/workflows/pages.yml` builds and publishes the site on every push to
+the default branch. GitHub only needs to be told to use it once: in the
+repository go to **Settings → Pages → Build and deployment → Source** and
+choose **GitHub Actions**. Then re-run the latest **Deploy to GitHub Pages**
+workflow from the **Actions** tab, or push any commit.
+
+To build the same static site yourself, run `npm run build` and serve the
+`dist/` folder with any static file server, for example `npx serve dist`.
+
+## Running your own server
 
 Requires **Node.js 20 or newer**.
 
@@ -30,7 +60,10 @@ with bots.
 Set `PORT` to change the port (`PORT=8080 npm start`).
 `npm run dev` restarts the server when files change.
 
-## Playing with friends
+The self-hosted server adds public lobby listings, and lobbies don't depend
+on any one player's browser staying open.
+
+## Playing with friends on your own server
 
 1. Start the server (see above). One person hosts it; everyone else only
    needs a browser.
@@ -132,9 +165,14 @@ shared/        code used by both the server and the browser
   motor.js     movement speeds and stepping
   data.js      characters, perks, items, realms
 public/        the browser client (no build step)
+  js/net.js        WebSocket connection to the Node server
+  js/p2p.js        GitHub Pages mode: in-tab host plus WebRTC for friends
+  js/host-worker.js runs server/lobby.js in a Web Worker for that mode
   js/gfx/      renderer, procedural models/textures, world, campfire scene
   js/game/     in-match client: prediction, interpolation, camera, effects
   js/ui/       splash, menus, lobby, HUD, results
+scripts/
+  build-static.js  builds dist/ for GitHub Pages
 test/
   simulate.js      runs all-bot matches headlessly and prints balance stats
   human-client.js  scripted WebSocket player for integration testing

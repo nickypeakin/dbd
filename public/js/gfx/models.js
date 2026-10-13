@@ -2,7 +2,7 @@
 // animation system. Survivors and killers share the same rig.
 
 import * as THREE from 'three';
-import { SURVIVORS, KILLERS } from '/shared/data.js';
+import { SURVIVORS, KILLERS } from '../../shared/data.js';
 import { fabricTexture, rustMetalTexture } from './textures.js';
 
 const mats = new Map();

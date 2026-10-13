@@ -13,11 +13,11 @@ import { Input } from './input.js';
 import { Decals, AuraRenderer, AURA } from './effects.js';
 import { audio } from '../audio.js';
 import { profile } from '../store.js';
-import { buildCollision } from '/shared/collision.js';
-import { survivorOptions, killerOptions, vaultPath, vaultType, attackCandidate, angDiff, relTo } from '/shared/interact.js';
-import { stepMove, playerBlockers, turnToward } from '/shared/motor.js';
-import { KILL, SURV, TIMES, HOOK } from '/shared/constants.js';
-import { KILLERS } from '/shared/data.js';
+import { buildCollision } from '../../shared/collision.js';
+import { survivorOptions, killerOptions, vaultPath, vaultType, attackCandidate, angDiff, relTo } from '../../shared/interact.js';
+import { stepMove, playerBlockers, turnToward } from '../../shared/motor.js';
+import { KILL, SURV, TIMES, HOOK } from '../../shared/constants.js';
+import { KILLERS } from '../../shared/data.js';
 
 const INTERP_DELAY = 0.1;
 const SEND_RATE = 1 / 30;

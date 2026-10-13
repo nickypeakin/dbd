@@ -460,3 +460,10 @@ input, select, textarea { font-family: var(--body); }
 .rrow .cat .bar .f { height: 100%; background: var(--gold); }
 .rrow .bp { font-family: var(--head); font-size: 22px; color: var(--gold); text-align: right; }
 .results .actions { margin-top: 26px; display: flex; gap: 12px; }
+
+/* browser-hosted (GitHub Pages) lobby status */
+.lobby-info .p2p-status { margin-top: 10px; font-size: 12px; line-height: 1.35; color: var(--muted); padding-left: 16px; position: relative; }
+.lobby-info .p2p-status::before { content: ''; position: absolute; left: 0; top: 4px; width: 8px; height: 8px; border-radius: 50%; background: #c9a227; }
+.lobby-info .p2p-status.online::before { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
+.lobby-info .p2p-status.offline::before { background: #b30000; }
+.subpanel p.note { font-size: 13px; color: var(--muted); border-left: 2px solid var(--red, #b30000); padding-left: 10px; }

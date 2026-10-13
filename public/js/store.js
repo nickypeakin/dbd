@@ -1,6 +1,6 @@
 // Player profile and settings persisted in localStorage (best effort).
 
-import { defaultLoadout, sanitizeLoadout } from '/shared/data.js';
+import { defaultLoadout, sanitizeLoadout } from '../shared/data.js';
 
 const KEY = 'dbd-fan-profile-v1';
 

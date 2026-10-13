@@ -4,8 +4,8 @@
 import * as THREE from 'three';
 import { h, ui, esc, $ } from './dom.js';
 import { perkIcon, ITEM_ICONS, STATUS_ICONS } from './icons.js';
-import { PERKS, KILLERS, SURVIVORS } from '/shared/data.js';
-import { GEN, HOOK, HEAL } from '/shared/constants.js';
+import { PERKS, KILLERS, SURVIVORS } from '../../shared/data.js';
+import { GEN, HOOK, HEAL } from '../../shared/constants.js';
 import { audio } from '../audio.js';
 
 const KEYNAME = { space: 'SPACE', m1: 'M1', m2: 'M2', e: 'E' };

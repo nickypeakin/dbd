@@ -4,8 +4,8 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { REALMS } from '/shared/data.js';
-import { MAP_HALF } from '/shared/constants.js';
+import { REALMS } from '../../shared/data.js';
+import { MAP_HALF } from '../../shared/constants.js';
 import { createSky } from './renderer.js';
 import * as TX from './textures.js';
 import {

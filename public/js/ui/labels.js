@@ -1,6 +1,6 @@
 // Display labels shared by UI modules.
 
-export { SURVIVORS, KILLERS } from '/shared/data.js';
+export { SURVIVORS, KILLERS } from '../../shared/data.js';
 
 export const SURV_CATS_LABELS = {
   objectives: 'Objectives',
