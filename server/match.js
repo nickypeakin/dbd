@@ -467,7 +467,12 @@ export class Match {
   }
 
   startAttack(p, lungeDur) {
-    if (p.role !== 'killer' || p.lock || p.carrying != null || p.atk || !this.powerAllowsAttack(p)) return false;
+    if (p.role !== 'killer' || p.lock || p.carrying != null || !this.powerAllowsAttack(p)) return false;
+    if (p.atk === 'cd' && !p.isBot) {
+      // tolerate the client's cooldown finishing a little before ours (latency)
+      const cd = p.atkHit ? KILL.HIT_COOLDOWN : KILL.MISS_COOLDOWN * (has(p, 'unrelenting') ? 0.7 : 1);
+      if (cd - p.atkT > 0.35) return false;
+    } else if (p.atk) return false;
     p.atk = 'lunge';
     p.atkT = 0;
     p.lungeDur = lungeDur || KILL.LUNGE_MAX;

@@ -11,7 +11,7 @@ import { randomSeed } from '../shared/rng.js';
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const COUNTDOWN = 5;
-const LOAD_TIMEOUT = 25;
+const LOAD_TIMEOUT = 45;
 
 function pickN(arr, n) { return arr.slice().sort(() => Math.random() - 0.5).slice(0, n); }
 function cleanName(n) {

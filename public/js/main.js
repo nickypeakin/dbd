@@ -25,6 +25,8 @@ const DISTRESS_FILTER = `
 
 class App {
   constructor() {
+    const params = new URLSearchParams(location.search);
+    this.noRender = params.has('norender');
     this.net = new Net();
     this.mode = 'splash';
     this.portraits = {};
@@ -97,10 +99,13 @@ class App {
     n.on('left', () => { this.inLobby = false; this.showMenu(); });
     n.on('kicked', () => { this.inLobby = false; toast('You were removed from the lobby.'); this.showMenu(); });
     n.on('match', (m) => this.startGame(m.info));
-    n.on('go', () => { if (this.game) this.game.go(); });
+    n.on('go', () => {
+      if (this.game && this.game.built) this.game.go();
+      else if (this.game) this.game.pendingGo = true;
+    });
     n.on('results', (m) => this.showResults(m.results));
-    n.on('s', (m) => { if (this.game) this.game.onSnapshot(m); });
-    n.on('ev', (m) => { if (this.game) for (const e of m.e) this.game.onEvent(e); });
+    n.on('s', (m) => { if (this.game && this.game.built) this.game.onSnapshot(m); });
+    n.on('ev', (m) => { if (this.game && this.game.built) for (const e of m.e) this.game.onEvent(e); });
   }
 
   // ------------------------------------------------------------ screens --
@@ -171,10 +176,14 @@ class App {
     await new Promise((r) => setTimeout(r, 60));
     try {
       const { Game } = await import('./game/game.js');
-      this.game = new Game(this, info);
-      await this.game.build();
+      const game = new Game(this, info);
+      this.game = game;
+      await game.build();
+      if (this.game !== game) return;
+      game.built = true;
       this.mode = 'game';
       this.net.send({ t: 'loaded' });
+      if (game.pendingGo) game.go();
     } catch (e) {
       console.error(e);
       toast('Failed to load the match: ' + e.message, 8000);
@@ -233,7 +242,7 @@ class App {
         this.game.frame(dt);
       } else {
         this.campfire.update(dt);
-        this.campfire.render();
+        if (!this.noRender) this.campfire.render();
         if (this.screen === 'lobby') this.lobbyUI.frame();
       }
     };

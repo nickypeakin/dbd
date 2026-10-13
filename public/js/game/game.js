@@ -149,10 +149,10 @@ export class Game {
     hand.position.set(0, 0, -0.1);
     arm.add(hand);
     const weapon = createWeapon(char, 1.0);
-    weapon.rotation.set(-0.2, 0, 0);
+    weapon.rotation.set(1.75, 0.15, 0);
     weapon.position.set(0, 0.02, -0.12);
     arm.add(weapon);
-    arm.position.set(0.32, -0.32, -0.45);
+    arm.position.set(0.3, -0.27, -0.48);
     vm.add(arm);
     this.vmArm = arm;
     if (char === 'hillbilly') {
@@ -454,6 +454,8 @@ export class Game {
     this.updateAuras();
     this.hud.update(dt);
     this.hud.endMarks();
+    if (this.app.noRender && !window.__renderOnce) return;
+    window.__renderOnce = false;
     renderer.render(this.scene, this.camera);
     this.aura.render(renderer, this.scene, this.camera, this.time);
   }
@@ -878,7 +880,8 @@ export class Game {
           const anchor = carrier.info.id === this.myId && this.role === 'killer' ? this.vmCarry : carrier.rig.carry;
           if (rig.root.parent !== anchor) { anchor.add(rig.root); }
           rig.root.position.set(0, 0, 0);
-          rig.root.rotation.set(-Math.PI / 2 - 0.25, Math.PI, 0);
+          // the camera looks down -z while the killer's chest faces +z
+          rig.root.rotation.set(-Math.PI / 2 - 0.25, anchor === this.vmCarry ? 0 : Math.PI, 0);
         } else {
           if (rig.root.parent !== this.scene) this.scene.add(rig.root);
           let rot = e.rot;
@@ -1084,13 +1087,13 @@ export class Game {
     const L = this.local;
     const t = this.time;
     const moving = this.self.spd > 0.5;
-    let rx = 0, ry = 0, rz = 0, px = 0.32, py = -0.32, pz = -0.45;
+    let rx = 0, ry = 0, rz = 0, px = 0.3, py = -0.27, pz = -0.48;
     if (moving) { py += Math.sin(t * 7.5) * 0.015; px += Math.cos(t * 3.75) * 0.01; }
     if (L.atk.s === 'lunge') { rx = 1.2; ry = 0.4; py = -0.1; pz = -0.35; }
     else if (L.atk.s === 'cd') {
       const k = Math.min(1, L.atk.t / 0.18);
       if (L.atk.hit && L.atk.t > 0.3) { rx = -0.2; ry = -1.0; px = 0.05; py = -0.35; rz = 0.6; }
-      else { rx = 1.2 - 2.0 * k; ry = 0.4 - 1.0 * k; px = 0.32 - 0.25 * k; py = -0.1 - 0.25 * k; }
+      else { rx = 1.2 - 2.0 * k; ry = 0.4 - 1.0 * k; px = 0.3 - 0.25 * k; py = -0.1 - 0.25 * k; }
     }
     if (sp.cy != null) { py -= 0.05; }
     if (sp.lk === 'stun' || sp.bl > 0) { rx = -0.6; py = -0.2; px = 0.15; rz = Math.sin(t * 10) * 0.1; }

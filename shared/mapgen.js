@@ -561,7 +561,7 @@ class Generator {
     const { M, rng } = this;
     const cands = this.spots.spawn.concat(this.spots.hatch).filter((s) => this.W.free(s.x, s.z, 1.2));
     const ks = rng.pick(cands.length ? cands : [{ x: 0, z: 0 }]);
-    M.spawns.killer = { x: ks.x, z: ks.z, rot: rng.range(-Math.PI, Math.PI) };
+    M.spawns.killer = { x: ks.x, z: ks.z, rot: Math.atan2(-ks.x, -ks.z) };
     const far = cands.filter((c) => Math.hypot(c.x - ks.x, c.z - ks.z) > 34);
     rng.shuffle(far);
     const groups = (far.length >= 2 ? far : cands).slice(0, 2);
@@ -570,7 +570,7 @@ class Generator {
       const ang = (i >> 1) * Math.PI + rng.range(-0.5, 0.5);
       let x = g.x + Math.cos(ang) * 1.1, z = g.z + Math.sin(ang) * 1.1;
       if (!this.W.free(x, z, 0.4)) { x = g.x; z = g.z; }
-      M.spawns.survivors.push({ x: r2(x), z: r2(z), rot: rng.range(-Math.PI, Math.PI) });
+      M.spawns.survivors.push({ x: r2(x), z: r2(z), rot: Math.atan2(-x, -z) + rng.range(-0.6, 0.6) });
     }
   }
 
