@@ -17,16 +17,6 @@ and `peerjs` (networking) and two open-source fonts.
 > trademark of Behaviour Interactive Inc. The "Made with Unity" splash is a
 > parody start-up screen; the game is plain JavaScript and WebGL.
 
-## Also in this repo: Phasmophobia fan remake
-
-`public/phasmo/index.html` is a separate single-player ghost hunting game
-inspired by *Phasmophobia*. It's one self-contained HTML file with a lobby,
-24 ghost types and the 6 Tanglewood Drive map, tuned for Chromebooks. Play it
-at `/phasmo/` (for example <http://localhost:3000/phasmo/>, or
-<https://nickypeakin.github.io/dbd/phasmo/> once it's on the default branch).
-See [public/phasmo/README.md](public/phasmo/README.md) for controls and how
-it's built.
-
 ## Playing online (GitHub Pages)
 
 The link above is a static copy of the game that GitHub hosts for free, and
