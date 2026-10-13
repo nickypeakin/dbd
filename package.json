@@ -1,0 +1,22 @@
+{
+  "name": "dead-by-daylight-fan-remake",
+  "version": "1.0.0",
+  "description": "A multiplayer 4v1 asymmetric horror game in the browser, inspired by Dead by Daylight. Play with friends or fill the lobby with bots.",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node test/simulate.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@fontsource/oswald": "5.3.0",
+    "@fontsource/roboto-condensed": "5.3.0",
+    "three": "0.170.0",
+    "ws": "8.22.0"
+  }
+}
