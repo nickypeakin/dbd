@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dead by Daylight — Fan Remake</title>
+  <meta name="description" content="A 4v1 asymmetrical horror game in your browser. Play with friends or bots.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23000'/%3E%3Cpath d='M18 46 L32 10 L46 46 L32 38 Z' fill='%23b30000'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/vendor/fonts/oswald/400.css">
+  <link rel="stylesheet" href="/vendor/fonts/oswald/500.css">
+  <link rel="stylesheet" href="/vendor/fonts/oswald/700.css">
+  <link rel="stylesheet" href="/vendor/fonts/roboto-condensed/400.css">
+  <link rel="stylesheet" href="/vendor/fonts/roboto-condensed/700.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/vendor/three/build/three.module.js",
+      "three/addons/": "/vendor/three/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div id="vignette"></div>
+  <div id="grain"></div>
+  <div id="ui"></div>
+  <div id="toasts"></div>
+  <noscript>This game needs JavaScript.</noscript>
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>
