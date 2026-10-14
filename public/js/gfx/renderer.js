@@ -8,23 +8,100 @@ export let renderer;
 
 export function initRenderer() {
   const canvas = document.getElementById('gl');
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+  // multisampling costs a lot on high-DPI screens, where edges are already fine
+  const antialias = (window.devicePixelRatio || 1) < 1.5;
+  renderer = new THREE.WebGLRenderer({ canvas, antialias, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   applyQuality();
   window.addEventListener('resize', () => applyQuality());
   return renderer;
 }
 
+// ------------------------------------------------------------ frame rate --
+// The game renders at most 60 frames a second. On "Auto" quality the render
+// resolution drops when frames take too long and creeps back up when there is
+// headroom, so the frame rate holds at 60 instead of the picture getting
+// sharper and slower.
+const TARGET_FPS = 60;
+export const perf = { fps: 0, ms: 0, scale: 1 };
+
+const dynamic = { scale: 1, frames: 0, time: 0, durations: [], good: 0, cooldown: 0, ceiling: Infinity, ceilingT: 0 };
+
+function maxRatio() {
+  const q = profile.settings.quality;
+  const dpr = window.devicePixelRatio || 1;
+  return q === 'low' ? 0.75 : q === 'medium' ? 1 : q === 'high' ? Math.min(dpr, 1.75) : Math.min(dpr, 1.5);
+}
+
 export function applyQuality() {
   const q = profile.settings.quality;
-  const pr = q === 'low' ? 0.75 : q === 'medium' ? 1 : Math.min(window.devicePixelRatio || 1, 1.75);
-  renderer.setPixelRatio(pr);
+  const top = maxRatio();
+  if (q !== 'auto') dynamic.scale = top;
+  dynamic.scale = Math.min(dynamic.scale, top);
+  renderer.setPixelRatio(dynamic.scale);
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   renderer.shadowMap.enabled = !!profile.settings.shadows && q !== 'low';
+  perf.scale = dynamic.scale;
+}
+
+// Frame limiter: call once per animation frame with its timestamp; returns
+// true when a frame should be drawn now.
+let nextFrame = 0;
+export function frameDue(now) {
+  const step = 1000 / TARGET_FPS;
+  if (now < nextFrame - 1.5) return false;
+  nextFrame = Math.max(nextFrame + step, now - step);
+  return true;
+}
+
+// Called after every drawn frame with its duration in seconds. `adapt` is
+// false while loading, when long frames say nothing about the GPU.
+export function trackFrame(dt, adapt = true) {
+  const d = dynamic;
+  d.frames++;
+  d.time += dt;
+  d.durations.push(dt);
+  if (d.time < 0.5) return;
+  perf.fps = d.frames / d.time;
+  perf.ms = (d.time / d.frames) * 1000;
+  // judge by the median frame so a single hitch (a match loading, a shader
+  // compiling) doesn't lower the resolution
+  d.durations.sort((a, b) => a - b);
+  const typical = 1 / d.durations[d.durations.length >> 1];
+  d.frames = 0;
+  d.time = 0;
+  d.durations.length = 0;
+  if (profile.settings.quality !== 'auto' || document.hidden || !adapt) return;
+  d.cooldown = Math.max(0, d.cooldown - 0.5);
+  d.ceilingT = Math.max(0, d.ceilingT - 0.5);
+  if (d.ceilingT === 0) d.ceiling = Infinity;
+  const top = Math.min(maxRatio(), d.ceiling);
+  let next = d.scale;
+  if (typical < TARGET_FPS - 5 && d.scale > 0.6) {
+    // GPU time grows with pixel count, so scale by the square root
+    next = Math.max(0.6, d.scale * Math.min(0.92, Math.sqrt(typical / (TARGET_FPS - 2))));
+    // if raising the resolution just caused this, don't try it again soon
+    if (d.good < 0) { d.ceiling = d.scale * 0.97; d.ceilingT = 30; }
+    d.good = 0;
+    d.cooldown = 1.5;
+  } else if (typical >= TARGET_FPS - 1.5) {
+    d.good = Math.max(0, d.good) + 1;
+    if (d.good >= 6 && d.cooldown === 0 && d.scale < top) {
+      next = Math.min(top, d.scale * 1.08);
+      d.good = -1;
+      d.cooldown = 1;
+    }
+  }
+  if (Math.abs(next - d.scale) > 0.01) {
+    d.scale = next;
+    renderer.setPixelRatio(next);
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    perf.scale = next;
+  }
 }
 
 // Gradient sky with stars, clouds and a moon.

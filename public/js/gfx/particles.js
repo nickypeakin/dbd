@@ -2,6 +2,7 @@
 
 import * as THREE from 'three';
 import { glowTexture, smokeTexture } from './textures.js';
+import { renderer } from './renderer.js';
 
 const VERT = `
 attribute float size;
@@ -55,7 +56,9 @@ export class Particles {
     for (let i = 0; i < max; i++) this.life[i] = 0;
   }
 
-  setScale(h) { this.material.uniforms.scale.value = h * 0.9; }
+  // h is the viewport height in CSS pixels; point sizes are in drawing-buffer
+  // pixels, which change with the render resolution
+  setScale(h) { this.material.uniforms.scale.value = h * 0.9 * renderer.getPixelRatio(); }
 
   emit(x, y, z, vx, vy, vz, life, size, r, g, b, a = 1, o = {}) {
     const i = this.cursor;

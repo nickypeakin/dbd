@@ -5,7 +5,7 @@ import { Net } from './net.js';
 import { P2PNet } from './p2p.js';
 import { profile, saveProfile } from './store.js';
 import { audio } from './audio.js';
-import { initRenderer, renderer } from './gfx/renderer.js';
+import { initRenderer, renderer, frameDue, trackFrame, perf } from './gfx/renderer.js';
 import { CampfireScene, startCampfireAudio } from './gfx/campfire.js';
 import { createSurvivor, createKiller, renderPortrait } from './gfx/models.js';
 import * as TX from './gfx/textures.js';
@@ -245,9 +245,24 @@ class App {
 
   // ------------------------------------------------------------- loop --
   loop() {
-    const tick = () => {
+    const fps = document.createElement('div');
+    fps.id = 'fps';
+    document.body.appendChild(fps);
+    let fpsT = 0;
+    const tick = (now) => {
       requestAnimationFrame(tick);
-      const dt = Math.min(0.05, this.clock.getDelta());
+      if (!frameDue(now)) return;
+      const raw = this.clock.getDelta();
+      trackFrame(raw, this.mode !== 'splash' && this.screen !== 'loading');
+      fpsT -= raw;
+      if (fpsT <= 0) {
+        fpsT = 0.5;
+        fps.hidden = !profile.settings.showFps || this.mode === 'splash';
+        const f = Math.round(perf.fps);
+        fps.textContent = `${f} FPS`;
+        fps.className = f >= 55 ? 'good' : f >= 40 ? 'ok' : 'bad';
+      }
+      const dt = Math.min(0.05, raw);
       audio.update(dt);
       if (this.mode === 'splash') return;
       if (this.mode === 'game' && this.game) {
