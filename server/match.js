@@ -993,7 +993,7 @@ export class Match {
   // ------------------------------------------------------- skill checks --
   issueSkill(p, kind) {
     const id = this.skillId++;
-    const zoneW = kind === 'ds' ? 0.07 : kind === 'struggle' ? 0.1 : SKILL.GOOD;
+    const zoneW = kind === 'ds' ? SKILL.DS : kind === 'struggle' ? SKILL.STRUGGLE : SKILL.GOOD;
     const start = 0.38 + Math.random() * 0.42;
     p.skill = { id, kind, start, good: zoneW, great: kind === 'ds' || kind === 'struggle' ? 0 : SKILL.GREAT, deadline: this.time + SKILL.WARN + SKILL.ROTATION + 1.0 };
     if (p.isBot) {

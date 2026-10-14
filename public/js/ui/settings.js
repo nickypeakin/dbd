@@ -42,7 +42,7 @@ export function openSettings(app, onClose) {
       else s[k] = Number(inp.value);
       if (label && inp.type === 'range') label.textContent = fmt(k, s[k]);
       applyAudioSettings();
-      if (k === 'quality' || k === 'shadows') applyQuality();
+      if (k === 'quality' || k === 'shadows') applyQuality(true);
       saveProfile();
     };
     if (inp.type === 'range' && label) label.textContent = fmt(k, s[k]);

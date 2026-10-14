@@ -1,7 +1,7 @@
 // The campfire scene used behind the title screen, main menu and lobby.
 
 import * as THREE from 'three';
-import { renderer, createSky } from './renderer.js';
+import { renderer, createSky, refreshShadows } from './renderer.js';
 import { groundTexture, barkTexture, rockTexture, glowTexture, grassTuftTexture } from './textures.js';
 import { createCampfire, createLog, deadTreeGeometry, rockGeometry, mulberry } from './props.js';
 import { createSurvivor, createKiller, survivorPose, killerPose, mat, disposeRig } from './models.js';
@@ -245,6 +245,8 @@ export class CampfireScene {
   }
 
   render() {
+    // the fire's shadow is a six-sided cube map: refresh it every third frame
+    refreshShadows(3);
     renderer.render(this.scene, this.camera);
   }
 }

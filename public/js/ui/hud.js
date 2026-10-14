@@ -195,11 +195,14 @@ export class HUD {
     }
   }
 
-  // returns true if a skill check consumed the key press
-  skillPress() {
+  // Returns true if a skill check consumed the key press. `at` is when the key
+  // went down (ms, the performance.now() clock): judging by that instead of
+  // the frame that handles it keeps a slow frame from turning a good press
+  // into a miss.
+  skillPress(at = performance.now()) {
     const s = this.skill;
     if (!s || s.done) return false;
-    const now = performance.now() / 1000;
+    const now = Math.min(at, performance.now()) / 1000;
     if (now < s.t0) return true; // too early: ignore but consume
     const f = (now - s.t0) / s.rot;
     let res = 'miss';

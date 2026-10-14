@@ -95,10 +95,12 @@ export const TIMES = {
 
 export const SKILL = {
   CHANCE_PER_SEC: 0.08,
-  WARN: 0.6, // delay between warning sound and the check appearing
-  ROTATION: 1.1, // seconds for the needle to sweep a full circle
-  GOOD: 0.13, // fraction of the circle
-  GREAT: 0.035,
+  WARN: 0.8, // delay between warning sound and the check appearing
+  ROTATION: 1.8, // seconds for the needle to sweep a full circle
+  GOOD: 0.17, // fraction of the circle
+  GREAT: 0.045,
+  DS: 0.1, // Decisive Strike and hook struggle checks have no great zone
+  STRUGGLE: 0.14,
 };
 
 export const TERROR_RADIUS = 32;

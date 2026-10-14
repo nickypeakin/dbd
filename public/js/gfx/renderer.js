@@ -16,6 +16,9 @@ export function initRenderer() {
   renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
+  // shadow maps are redrawn only when a scene asks (see refreshShadows), not
+  // on every render call
+  renderer.shadowMap.autoUpdate = false;
   applyQuality();
   window.addEventListener('resize', () => applyQuality());
   return renderer;
@@ -29,7 +32,7 @@ export function initRenderer() {
 const TARGET_FPS = 60;
 export const perf = { fps: 0, ms: 0, scale: 1 };
 
-const dynamic = { scale: 1, frames: 0, time: 0, durations: [], good: 0, cooldown: 0, ceiling: Infinity, ceilingT: 0 };
+const dynamic = { scale: 1, frames: 0, time: 0, durations: [], good: 0, cooldown: 0, ceiling: Infinity, ceilingT: 0, slow: 0, shadowsOff: false };
 
 function maxRatio() {
   const q = profile.settings.quality;
@@ -37,15 +40,25 @@ function maxRatio() {
   return q === 'low' ? 0.75 : q === 'medium' ? 1 : q === 'high' ? Math.min(dpr, 1.75) : Math.min(dpr, 1.5);
 }
 
-export function applyQuality() {
+// `fromSettings` is true when the player changed a setting, which also undoes
+// Auto having switched shadows off.
+export function applyQuality(fromSettings = false) {
   const q = profile.settings.quality;
   const top = maxRatio();
+  if (fromSettings) dynamic.shadowsOff = false;
   if (q !== 'auto') dynamic.scale = top;
   dynamic.scale = Math.min(dynamic.scale, top);
   renderer.setPixelRatio(dynamic.scale);
   renderer.setSize(window.innerWidth, window.innerHeight, false);
-  renderer.shadowMap.enabled = !!profile.settings.shadows && q !== 'low';
+  renderer.shadowMap.enabled = !!profile.settings.shadows && q !== 'low' && !dynamic.shadowsOff;
   perf.scale = dynamic.scale;
+}
+
+// Redraw shadow maps on every n-th call. Shadows cost a pass over every
+// caster; at 60 FPS refreshing them every other frame is hard to notice.
+let shadowCalls = 0;
+export function refreshShadows(every = 1) {
+  if (shadowCalls++ % every === 0) renderer.shadowMap.needsUpdate = true;
 }
 
 // Frame limiter: call once per animation frame with its timestamp; returns
@@ -79,6 +92,13 @@ export function trackFrame(dt, adapt = true) {
   d.cooldown = Math.max(0, d.cooldown - 0.5);
   d.ceilingT = Math.max(0, d.ceilingT - 0.5);
   if (d.ceilingT === 0) d.ceiling = Infinity;
+  // still too slow at the lowest resolution: drop the shadows, the next most
+  // expensive thing (the game switches the moon's shadow off to match)
+  d.slow = d.scale <= 0.61 && typical < TARGET_FPS - 10 ? d.slow + 1 : 0;
+  if (d.slow >= 4 && renderer.shadowMap.enabled) {
+    d.shadowsOff = true;
+    renderer.shadowMap.enabled = false;
+  }
   const top = Math.min(maxRatio(), d.ceiling);
   let next = d.scale;
   if (typical < TARGET_FPS - 5 && d.scale > 0.6) {
