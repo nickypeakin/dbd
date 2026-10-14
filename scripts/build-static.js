@@ -5,6 +5,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -69,9 +70,35 @@ for (const m of html.matchAll(/href="vendor\/fonts\/([^"]+\.css)"/g)) {
 // WebRTC helper used to connect friends
 copy(path.join(NM, 'peerjs', 'dist', 'peerjs.min.js'), path.join(OUT, 'vendor', 'peerjs', 'peerjs.min.js'));
 
+// Version the game's own files: browsers keep GitHub Pages files for up to 10
+// minutes, so without this a reload after an update can run old code (or a
+// mix of old and new modules). Every relative import gets ?v=<hash of the
+// build>, which changes whenever any of these files does.
+const walkFiles = (dir, ext, out = []) => {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) walkFiles(p, ext, out);
+    else if (ext.some((x) => e.name.endsWith(x))) out.push(p);
+  }
+  return out;
+};
+const codeFiles = ['js', 'shared', 'server', 'css'].flatMap((d) => walkFiles(path.join(OUT, d), ['.js', '.css']));
+const hash = crypto.createHash('sha1');
+for (const f of codeFiles.sort()) hash.update(fs.readFileSync(f));
+const version = hash.digest('hex').slice(0, 10);
+const tag = (spec) => `${spec}?v=${version}`;
+for (const f of codeFiles.filter((f) => f.endsWith('.js'))) {
+  const src = fs.readFileSync(f, 'utf8')
+    .replace(/((?:\bfrom|\bimport)\s*\(?\s*['"])(\.{1,2}\/[^'"?]+\.js)(['"])/g, (m, a, spec, b) => a + tag(spec) + b)
+    .replace(/(new URL\(\s*['"])(\.{1,2}\/[^'"?]+\.js)(['"])/g, (m, a, spec, b) => a + tag(spec) + b);
+  fs.writeFileSync(f, src);
+}
+
 // switch the client to browser-hosted multiplayer
-const out = html.replace('<meta name="dbd-net" content="server">', '<meta name="dbd-net" content="p2p">');
+let out = html.replace('<meta name="dbd-net" content="server">', '<meta name="dbd-net" content="p2p">');
 if (out === html) throw new Error('index.html is missing the dbd-net meta tag');
+out = out.replace('src="js/main.js"', `src="${tag('js/main.js')}"`).replace('href="css/style.css"', `href="${tag('css/style.css')}"`);
+if (!out.includes(`?v=${version}"></script>`) || !out.includes(`style.css?v=${version}`)) throw new Error('could not version main.js or style.css in index.html');
 fs.writeFileSync(path.join(OUT, 'index.html'), out);
 fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
 
@@ -84,4 +111,4 @@ const count = (dir) => {
   }
 };
 count(OUT);
-console.log(`Static build written to dist/ (${files} files, ${(bytes / 1e6).toFixed(1)} MB)`);
+console.log(`Static build ${version} written to dist/ (${files} files, ${(bytes / 1e6).toFixed(1)} MB)`);

@@ -3,7 +3,7 @@
 // scratch marks, sounds and the HUD.
 
 import * as THREE from 'three';
-import { renderer } from '../gfx/renderer.js';
+import { renderer, refreshShadows } from '../gfx/renderer.js';
 import { World, setLayerDeep } from '../gfx/world.js';
 import { createSurvivor, createKiller, survivorPose, killerPose, createWeapon, createChainsaw, createHatchet, createBell, createKillerArm } from '../gfx/models.js';
 import { Particles } from '../gfx/particles.js';
@@ -436,6 +436,11 @@ export class Game {
   // --------------------------------------------------------------- frame --
   frame(dt) {
     this.time += dt;
+    // the moon's shadow follows the shadow setting (Auto may switch it off);
+    // toggling castShadow makes three.js rebuild the shaders to match
+    const shadows = renderer.shadowMap.enabled;
+    if (this.world.moon.castShadow !== shadows) this.world.moon.castShadow = shadows;
+    refreshShadows(2);
     if (!this.latest) { renderer.render(this.scene, this.camera); return; }
     this.handleInput(dt);
     this.updateSelf(dt);
@@ -494,16 +499,16 @@ export class Game {
         if (ev.type === 'down' && (ev.code === 'Mouse0' || ev.code === 'Space')) this.cycleSpectate();
         continue;
       }
-      if (ev.type === 'down') this.onPress(ev.code, me, sp);
+      if (ev.type === 'down') this.onPress(ev.code, me, sp, ev.t);
       else this.onRelease(ev.code, me, sp);
     }
   }
 
-  onPress(code, me, sp) {
+  onPress(code, me, sp, at) {
     const isK = this.role === 'killer';
     const o = this.currentOptions;
     // skill checks take space first
-    if (code === 'Space' && this.hud.skillPress()) return;
+    if (code === 'Space' && this.hud.skillPress(at)) return;
     if (!isK && sp.h === 'carried') {
       if (code === 'KeyA') this.act({ a: 'wig', d: -1 });
       if (code === 'KeyD') this.act({ a: 'wig', d: 1 });

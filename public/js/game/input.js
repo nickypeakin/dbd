@@ -16,7 +16,7 @@ export class Input {
       if (['Space', 'Tab', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) e.preventDefault();
       if (e.repeat) return;
       this.keys.add(e.code);
-      this.events.push({ type: 'down', code: e.code });
+      this.events.push({ type: 'down', code: e.code, t: e.timeStamp });
     });
     on(window, 'keyup', (e) => {
       this.keys.delete(e.code);
