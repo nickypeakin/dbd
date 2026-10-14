@@ -24,9 +24,10 @@ export function openSettings(app, onClose) {
         <div class="setting"><span>Invert mouse Y</span><span><input type="checkbox" class="check" data-k="invertY" ${s.invertY ? 'checked' : ''}></span><span></span></div>
         <div class="setting"><span>Graphics quality</span>
           <select class="select" data-k="quality">
-            ${['low', 'medium', 'high'].map((q) => `<option value="${q}" ${s.quality === q ? 'selected' : ''}>${q[0].toUpperCase() + q.slice(1)}</option>`).join('')}
+            ${[['auto', 'Auto (holds 60 FPS)'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']].map(([q, n]) => `<option value="${q}" ${s.quality === q ? 'selected' : ''}>${n}</option>`).join('')}
           </select><span></span></div>
         <div class="setting"><span>Shadows</span><span><input type="checkbox" class="check" data-k="shadows" ${s.shadows ? 'checked' : ''}></span><span></span></div>
+        <div class="setting"><span>Show FPS</span><span><input type="checkbox" class="check" data-k="showFps" ${s.showFps ? 'checked' : ''}></span><span></span></div>
         <div style="text-align:right;margin-top:18px"><button class="btn close">Done</button></div>
       </div>
     </div>`);

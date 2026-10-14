@@ -61,11 +61,19 @@ export const AURA = { RED: 1, YELLOW: 2, WHITE: 3 };
 function auraMaterial(color) {
   return new THREE.ShaderMaterial({
     uniforms: { color: { value: new THREE.Color(color) }, time: { value: 0 } },
+    // the skinning chunks make characters glow in their current pose
     vertexShader: `
+      #include <common>
+      #include <skinning_pars_vertex>
       varying vec3 vN; varying vec3 vV;
       void main() {
-        vec4 mv = modelViewMatrix * vec4(position, 1.0);
-        vN = normalize(normalMatrix * normal);
+        #include <skinbase_vertex>
+        #include <beginnormal_vertex>
+        #include <skinnormal_vertex>
+        #include <begin_vertex>
+        #include <skinning_vertex>
+        vec4 mv = modelViewMatrix * vec4(transformed, 1.0);
+        vN = normalize(normalMatrix * objectNormal);
         vV = normalize(-mv.xyz);
         gl_Position = projectionMatrix * mv;
       }`,

@@ -153,6 +153,10 @@ docker run -p 3000:3000 dbd-fan
   repair, heal, rescue, loop pallets and windows, and hide. Killer bots
   patrol, chase, use their powers, kick generators and search lockers.
 - **Results screen:** bloodpoints by category and an emblem for each player.
+- **Performance:** the game runs at up to 60 FPS, shown in the top-left
+  corner (turn it off under **Settings → Show FPS**). On the default **Auto**
+  graphics quality the render resolution drops when frames take too long and
+  climbs back when there's headroom, so the frame rate stays at 60.
 
 ## Development
 

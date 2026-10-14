@@ -7,6 +7,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { REALMS } from '../../shared/data.js';
 import { MAP_HALF } from '../../shared/constants.js';
 import { createSky } from './renderer.js';
+import { profile } from '../store.js';
 import * as TX from './textures.js';
 import {
   createGenerator, createHook, createPalletMesh, createLocker, createChest, createTotem, createGate, createSwitch,
@@ -14,6 +15,31 @@ import {
   createEntityLegs, mergeGroup,
 } from './props.js';
 import { mat } from './models.js';
+import { bake } from './bake.js';
+
+// Splits instances into square map cells. Each cell is its own InstancedMesh,
+// so cells off screen (or, in the moon's shadow pass, away from the player)
+// are skipped, and World.update hides cells that are lost in the fog.
+function chunked(geo, material, matrices, cell, opts = {}) {
+  const cells = new Map();
+  const p = new THREE.Vector3();
+  for (const m4 of matrices) {
+    p.setFromMatrixPosition(m4);
+    const k = `${Math.floor(p.x / cell)},${Math.floor(p.z / cell)}`;
+    if (!cells.has(k)) cells.set(k, []);
+    cells.get(k).push(m4);
+  }
+  const out = [];
+  for (const list of cells.values()) {
+    const im = new THREE.InstancedMesh(geo, material, list.length);
+    list.forEach((mm, i) => im.setMatrixAt(i, mm));
+    im.castShadow = !!opts.cast;
+    im.receiveShadow = !!opts.receive;
+    im.computeBoundingSphere();
+    out.push(im);
+  }
+  return out;
+}
 
 // Box geometry whose UVs are scaled to world size (texture tiles every `tile` metres).
 function worldBox(w, h, d, tile = 2) {
@@ -60,21 +86,25 @@ export class World {
     scene.add(this.ambient);
     const moon = (this.moon = new THREE.DirectionalLight(R.moon, 1.9 * R.moonIntensity));
     moon.castShadow = true;
-    moon.shadow.mapSize.set(2048, 2048);
+    const q = profile.settings.quality;
+    moon.shadow.mapSize.setScalar(q === 'high' ? 2048 : 1024);
     const sc = moon.shadow.camera;
     sc.left = -32; sc.right = 32; sc.top = 32; sc.bottom = -32; sc.near = 1; sc.far = 140;
     moon.shadow.bias = -0.0006;
     moon.shadow.normalBias = 0.04;
     this.moonDir = this.sky.userData.moonDir.clone();
     scene.add(moon, moon.target);
-    // pooled point lights for gens, gates, totems, hatch
+    // pooled point lights for gens, gates, totems, hatch (every light costs
+    // on every pixel, so only the nearest few sources get one)
     this.pool = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 3; i++) {
       const l = new THREE.PointLight('#ffcc88', 0, 12, 1.8);
       scene.add(l);
       this.pool.push(l);
     }
     this.lightSources = [];
+    this.cullables = [];
+    this.cullT = 0;
     progress(0.1);
     this.buildGround();
     progress(0.2);
@@ -85,7 +115,17 @@ export class World {
     this.buildVegetation();
     progress(0.85);
     this.buildBoundary();
+    // merge the static parts of every prop into a few draw calls
+    bake(this.root);
     progress(1);
+  }
+
+  // Hide instanced cells that are too far from the camera to matter.
+  addCullable(list, maxDist) {
+    for (const im of list) {
+      this.root.add(im);
+      this.cullables.push({ o: im, s: im.boundingSphere, max: maxDist });
+    }
   }
 
   // --------------------------------------------------------------- ground --
@@ -215,6 +255,7 @@ export class World {
       const g = worldBox(r.w, 0.25, r.d, 2);
       const m = new THREE.Mesh(g, roofMat);
       m.position.set(r.x, r.y + 0.125, r.z);
+      m.userData.keep = true;
       m.castShadow = true;
       m.receiveShadow = true;
       this.root.add(m);
@@ -374,16 +415,10 @@ export class World {
       m4.compose(v.set(x, 0, z), q, s.set(sc, 0.9 + rnd() * 0.6, sc));
       treeMats[k].push(m4.clone());
     }
-    treeVariants.forEach((g, k) => {
-      const im = new THREE.InstancedMesh(g, bark, treeMats[k].length);
-      treeMats[k].forEach((mm, i) => im.setMatrixAt(i, mm));
-      im.castShadow = true;
-      im.receiveShadow = true;
-      this.root.add(im);
-    });
+    treeVariants.forEach((g, k) => this.addCullable(chunked(g, bark, treeMats[k], 30, { cast: true, receive: true }), 75));
     // a few pines in the far forest
     const pineG = pineGeometry(7);
-    const pineM = new THREE.MeshStandardMaterial({ color: '#1f2a1e', roughness: 1 });
+    const pineM = new THREE.MeshLambertMaterial({ color: '#1f2a1e' });
     const pines = [];
     for (let i = 0; i < 160; i++) {
       const side = Math.floor(rnd() * 4);
@@ -395,9 +430,7 @@ export class World {
       m4.compose(v.set(x, 0, z), q, s.set(sc, sc, sc));
       pines.push(m4.clone());
     }
-    const pim = new THREE.InstancedMesh(pineG, pineM, pines.length);
-    pines.forEach((mm, i) => pim.setMatrixAt(i, mm));
-    this.root.add(pim);
+    this.addCullable(chunked(pineG, pineM, pines, 40), 95);
     // rocks
     const rockG = [rockGeometry(21), rockGeometry(34), rockGeometry(55)];
     const rockMat = new THREE.MeshStandardMaterial({ map: TX.rockTexture(), roughness: 1, color: '#b0aca2' });
@@ -409,34 +442,24 @@ export class World {
       m4.compose(v.set(c.x, c.h * 0.3, c.z), q, s.set(c.r * 1.1, c.h * 0.6, c.r * 1.1));
       rockMats[k].push(m4.clone());
     }
-    rockG.forEach((g, k) => {
-      if (!rockMats[k].length) return;
-      const im = new THREE.InstancedMesh(g, rockMat, rockMats[k].length);
-      rockMats[k].forEach((mm, i) => im.setMatrixAt(i, mm));
-      im.castShadow = true;
-      im.receiveShadow = true;
-      this.root.add(im);
-    });
+    rockG.forEach((g, k) => this.addCullable(chunked(g, rockMat, rockMats[k], 30, { cast: true, receive: true }), 75));
     // grass tufts
     const grassGeo = new THREE.PlaneGeometry(0.7, 0.5);
     grassGeo.translate(0, 0.25, 0);
     const g2 = grassGeo.clone().rotateY(Math.PI / 2);
     const tuft = mergeGeometries([grassGeo, g2]);
-    const grassMat = new THREE.MeshStandardMaterial({ map: TX.grassTuftTexture(), alphaTest: 0.45, side: THREE.DoubleSide, color: R === REALMS.coldwind ? '#b0a070' : '#9a9a78' });
+    const grassMat = new THREE.MeshLambertMaterial({ map: TX.grassTuftTexture(), alphaTest: 0.45, side: THREE.DoubleSide, color: R === REALMS.coldwind ? '#b0a070' : '#9a9a78' });
     const N = 5200;
-    const grass = new THREE.InstancedMesh(tuft, grassMat, N);
-    let n = 0;
-    for (let i = 0; i < N * 2 && n < N; i++) {
+    const tufts = [];
+    for (let i = 0; i < N * 2 && tufts.length < N; i++) {
       const x = (rnd() * 2 - 1) * (MAP_HALF + 6), z = (rnd() * 2 - 1) * (MAP_HALF + 6);
       if (this.map.floors.some((f) => Math.abs(x - f.x) < f.w / 2 && Math.abs(z - f.z) < f.d / 2)) continue;
       e.set(0, rnd() * 6.28, 0); q.setFromEuler(e);
       const sc = 0.6 + rnd() * 0.9;
       m4.compose(v.set(x, 0, z), q, s.set(sc, sc * (0.7 + rnd() * 0.6), sc));
-      grass.setMatrixAt(n++, m4);
+      tufts.push(m4.clone());
     }
-    grass.count = n;
-    grass.receiveShadow = true;
-    this.root.add(grass);
+    this.addCullable(chunked(tuft, grassMat, tufts, 16, { receive: true }), 42);
     // corn patches (block line of sight) and corn boundary
     const cornPatches = this.map.veg.filter((p) => p.k === 'corn');
     const cornBoundary = this.realm.boundary === 'corn';
@@ -444,13 +467,14 @@ export class World {
       const cg = new THREE.PlaneGeometry(0.9, 2.6);
       cg.translate(0, 1.3, 0);
       const cross = mergeGeometries([cg, cg.clone().rotateY(Math.PI / 2)]);
-      const cm = new THREE.MeshStandardMaterial({ map: TX.cornTexture(), alphaTest: 0.4, side: THREE.DoubleSide, color: '#c8b88a' });
+      const cm = new THREE.MeshLambertMaterial({ map: TX.cornTexture(), alphaTest: 0.4, side: THREE.DoubleSide, color: '#c8b88a' });
       const pts = [];
       for (const p of cornPatches) {
         for (let x = -p.w / 2 + 0.3; x < p.w / 2; x += 0.55) {
           for (let z = -p.d / 2 + 0.3; z < p.d / 2; z += 0.55) pts.push([p.x + x + (rnd() - 0.5) * 0.3, p.z + z + (rnd() - 0.5) * 0.3]);
         }
       }
+      const inner = pts.length;
       if (cornBoundary) {
         for (let i = 0; i < 5200; i++) {
           const side = Math.floor(rnd() * 4);
@@ -461,14 +485,12 @@ export class World {
           pts.push([x, z]);
         }
       }
-      const im = new THREE.InstancedMesh(cross, cm, pts.length);
-      pts.forEach(([x, z], i) => {
+      const mats = pts.map(([x, z]) => {
         e.set((rnd() - 0.5) * 0.1, rnd() * 6.28, (rnd() - 0.5) * 0.1); q.setFromEuler(e);
-        m4.compose(v.set(x, 0, z), q, s.set(1, 0.8 + rnd() * 0.45, 1));
-        im.setMatrixAt(i, m4);
+        return m4.compose(v.set(x, 0, z), q, s.set(1, 0.8 + rnd() * 0.45, 1)).clone();
       });
-      im.castShadow = true;
-      this.root.add(im);
+      if (inner) this.addCullable(chunked(cross, cm, mats.slice(0, inner), 16, { cast: true }), 60);
+      if (mats.length > inner) this.addCullable(chunked(cross, cm, mats.slice(inner), 20), 70);
     }
   }
 
@@ -602,6 +624,11 @@ export class World {
 
   update(dt, camPos) {
     this.t += dt;
+    this.cullT -= dt;
+    if (this.cullT <= 0) {
+      this.cullT = 0.2;
+      for (const c of this.cullables) c.o.visible = c.s.center.distanceTo(camPos) - c.s.radius < c.max;
+    }
     this.sky.position.copy(camPos);
     this.sky.userData.material.uniforms.time.value = this.t;
     // lockers: animate doors back closed

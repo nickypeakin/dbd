@@ -56,6 +56,7 @@ export function createGenerator() {
   const pistons = [];
   for (let i = 0; i < 4; i++) {
     const p = m(cyl(0.05, 0.05, 0.35, 8), steel, -0.05 + i * 0.16, 1.35, 0.15);
+    p.userData.keep = true;
     g.add(p);
     pistons.push(p);
   }
@@ -64,6 +65,7 @@ export function createGenerator() {
   for (let i = 0; i < 4; i++) {
     const bm = new THREE.MeshStandardMaterial({ color: '#3a3020', emissive: '#ffb347', emissiveIntensity: 0, roughness: 0.4 });
     const b = m(new THREE.SphereGeometry(0.04, 8, 6), bm, -0.48 + i * 0.13, 0.85, 0.44, false);
+    b.userData.keep = true;
     g.add(b);
     bulbs.push(b);
   }
@@ -72,6 +74,7 @@ export function createGenerator() {
   g.add(m(box(0.5, 0.05, 0.05), dark, -0.42, 2.38, -0.3));
   const lampMat = new THREE.MeshStandardMaterial({ color: '#4a4030', emissive: '#ffd27a', emissiveIntensity: 0, roughness: 0.3 });
   const lamp = m(new THREE.SphereGeometry(0.11, 12, 8), lampMat, -0.2, 2.3, -0.3, false);
+  lamp.userData.keep = true;
   g.add(lamp);
   g.add(m(new THREE.ConeGeometry(0.2, 0.14, 12, 1, true), mat('#2c2b28', { side: THREE.DoubleSide }), -0.2, 2.4, -0.3));
   // cables
@@ -211,6 +214,7 @@ export function createGate() {
   for (let i = 0; i < 3; i++) {
     const lm = new THREE.MeshStandardMaterial({ color: '#301010', emissive: '#ff2a1a', emissiveIntensity: 0, roughness: 0.3 });
     const l = m(new THREE.SphereGeometry(0.12, 10, 8), lm, -1.2 + i * 1.2, 5.05, -0.55, false);
+    l.userData.keep = true;
     g.add(l);
     lights.push(l);
   }
@@ -231,6 +235,7 @@ export function createSwitch() {
   for (let i = 0; i < 3; i++) {
     const lm = new THREE.MeshStandardMaterial({ color: '#301010', emissive: '#ff3a1a', emissiveIntensity: 0, roughness: 0.3 });
     const l = m(new THREE.SphereGeometry(0.04, 8, 6), lm, -0.15, 1.38 - i * 0.12, 0.17, false);
+    l.userData.keep = true;
     g.add(l);
     lights.push(l);
   }

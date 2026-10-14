@@ -31,6 +31,11 @@ button { font-family: var(--head); cursor: pointer; }
 input, select, textarea { font-family: var(--body); }
 #gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; outline: none; }
 #ui { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+#fps {
+  position: fixed; top: 4px; left: 8px; z-index: 300; pointer-events: none;
+  font: 500 12px/1 var(--head); letter-spacing: 0.08em; text-shadow: 0 1px 3px #000;
+}
+#fps.good { color: #7bd36b; } #fps.ok { color: #f0c94a; } #fps.bad { color: #ff5a4a; }
 #ui > * { pointer-events: auto; }
 #vignette {
   position: fixed; inset: 0; pointer-events: none; z-index: 5;

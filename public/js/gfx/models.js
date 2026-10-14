@@ -2,13 +2,13 @@
 // system. Survivors and killers share the same rig: tapered limbs whose ends
 // are spheres centred on the joints (so knees and elbows never open a gap),
 // sculpted heads with faces and hair, and an outfit per character. Once a
-// character is built, the static parts on each joint are merged per material
-// to keep draw calls low.
+// character is built, the static parts on each joint are baked together
+// (see bake.js) to keep draw calls low.
 
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { SURVIVORS, KILLERS } from '../../shared/data.js';
+import { bake, skin } from './bake.js';
 import {
   fabricTexture, rustMetalTexture, hairTexture, denimTexture, skinTexture, leatherTexture,
   furTexture, knitTexture, floralTexture, bloodyTexture,
@@ -276,10 +276,12 @@ class Head {
       put(this.j, sph(0.07 * R * k, 10, 6), irisM, [ic.x, ic.y, ic.z]);
       const pc = c.clone().addScaledVector(fwd, er - 0.004 * R * k);
       put(this.j, sph(0.034 * R * k, 8, 6), pupil, [pc.x, pc.y, pc.z]);
-      // upper lid: a cap over the eyeball that rolls down to blink
-      const lid = put(this.j, lidGeo, this.skin, [c.x, c.y, c.z], [o.lid ?? -0.55, sx * 0.15, 0], k);
-      lid.userData.keep = true;
-      this.rig.lids.push({ m: lid, open: o.lid ?? -0.55, closed: 0.75 });
+      // upper lid: a cap over the eyeball on its own bone, which rolls it
+      // down to blink
+      const lb = bone(this.j, c.x, c.y, c.z);
+      lb.rotation.set(o.lid ?? -0.55, sx * 0.15, 0);
+      put(lb, lidGeo, this.skin, null, null, k);
+      this.rig.lids.push({ m: lb, open: o.lid ?? -0.55, closed: 0.75 });
     });
   }
 
@@ -433,23 +435,23 @@ export class Rig {
     const s = (this.s = spec.scale || 1);
     const w = (this.w = spec.girth || 1);
     this.root = new THREE.Group();
-    this.body = group(this.root);
+    this.body = bone(this.root);
     const J = (this.j = {});
-    J.hips = group(this.body, 0, 0.95 * s, 0);
-    J.spine = group(J.hips, 0, 0.06 * s, 0);
-    J.chest = group(J.spine, 0, 0.4 * s, 0);
-    J.head = group(J.chest, 0, 0.14 * s, 0);
+    J.hips = bone(this.body, 0, 0.95 * s, 0);
+    J.spine = bone(J.hips, 0, 0.06 * s, 0);
+    J.chest = bone(J.spine, 0, 0.4 * s, 0);
+    J.head = bone(J.chest, 0, 0.14 * s, 0);
     const sw = (spec.fem ? 0.188 : 0.2) * s * w;
-    J.shL = group(J.chest, sw, -0.02 * s, 0);
-    J.elL = group(J.shL, 0, -0.29 * s, 0);
-    J.handL = group(J.elL, 0, -0.27 * s, 0);
-    J.shR = group(J.chest, -sw, -0.02 * s, 0);
-    J.elR = group(J.shR, 0, -0.29 * s, 0);
-    J.handR = group(J.elR, 0, -0.27 * s, 0);
-    J.hipL = group(J.hips, 0.095 * s * w, -0.04 * s, 0);
-    J.knL = group(J.hipL, 0, -0.44 * s, 0);
-    J.hipR = group(J.hips, -0.095 * s * w, -0.04 * s, 0);
-    J.knR = group(J.hipR, 0, -0.44 * s, 0);
+    J.shL = bone(J.chest, sw, -0.02 * s, 0);
+    J.elL = bone(J.shL, 0, -0.29 * s, 0);
+    J.handL = bone(J.elL, 0, -0.27 * s, 0);
+    J.shR = bone(J.chest, -sw, -0.02 * s, 0);
+    J.elR = bone(J.shR, 0, -0.29 * s, 0);
+    J.handR = bone(J.elR, 0, -0.27 * s, 0);
+    J.hipL = bone(J.hips, 0.095 * s * w, -0.04 * s, 0);
+    J.knL = bone(J.hipL, 0, -0.44 * s, 0);
+    J.hipR = bone(J.hips, -0.095 * s * w, -0.04 * s, 0);
+    J.knR = bone(J.hipR, 0, -0.44 * s, 0);
     this.lids = [];
     this.blinkT = 1 + Math.random() * 3;
     this.blinkK = 0;
@@ -461,35 +463,12 @@ export class Rig {
     this.meshes = [];
   }
 
-  // Merge the static parts on each joint per material, then index meshes.
+  // Skin the whole body onto the joints (a few draw calls per character),
+  // merge whatever moves on its own, then index meshes.
   finish() {
-    for (const g of [this.body, ...Object.values(this.j)]) {
-      const byMat = new Map();
-      for (const c of g.children) {
-        if (!c.isMesh || c.userData.keep) continue;
-        if (!byMat.has(c.material)) byMat.set(c.material, []);
-        byMat.get(c.material).push(c);
-      }
-      for (const [m, list] of byMat) {
-        if (list.length < 2) continue;
-        const geos = list.map((c) => {
-          c.updateMatrix();
-          const geo = c.geometry.clone();
-          for (const k of Object.keys(geo.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') geo.deleteAttribute(k);
-          if (!geo.index) geo.setIndex([...Array(geo.attributes.position.count).keys()]);
-          geo.applyMatrix4(c.matrix);
-          return geo;
-        });
-        const merged = mergeGeometries(geos, false);
-        for (const geo of geos) geo.dispose();
-        if (!merged) continue;
-        merged.userData.owned = true;
-        for (const c of list) g.remove(c);
-        const mesh = new THREE.Mesh(merged, m);
-        mesh.castShadow = true;
-        g.add(mesh);
-      }
-    }
+    const s = this.s;
+    this.skeleton = skin(this.root, new THREE.Sphere(V(0, 1.1 * s, 0), 3 * s));
+    bake(this.root);
     this.collectMeshes();
   }
 
@@ -537,9 +516,17 @@ function group(parent, x = 0, y = 0, z = 0) {
   return g;
 }
 
+function bone(parent, x = 0, y = 0, z = 0) {
+  const b = new THREE.Bone();
+  b.position.set(x, y, z);
+  if (parent) parent.add(b);
+  return b;
+}
+
 // Free the geometry built just for this character.
 export function disposeRig(rig) {
   rig.root.traverse((o) => { if (o.isMesh && o.geometry.userData.owned) o.geometry.dispose(); });
+  if (rig.skeleton) rig.skeleton.dispose();
 }
 
 // ---------------------------------------------------------------- body --
@@ -1078,6 +1065,7 @@ function buildHillbilly(rig, s) {
   rig.weapon = createWeapon('hillbilly', s);
   J.handR.add(rig.weapon);
   rig.saw = createChainsaw(s);
+  rig.saw.userData.keep = true;
   J.handL.add(rig.saw);
 }
 
@@ -1141,6 +1129,7 @@ function buildHuntress(rig, s) {
   J.handR.add(rig.weapon);
   rig.hatchet = createHatchet(s);
   rig.hatchet.visible = false;
+  rig.hatchet.userData.keep = true;
   J.handL.add(rig.hatchet);
 }
 

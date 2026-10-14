@@ -11,9 +11,10 @@ const DEFAULTS = {
   settings: {
     master: 0.8, music: 0.6, sfx: 0.9,
     sensitivity: 1.0, invertY: false,
-    quality: 'high', shadows: true, fov: 87,
+    quality: 'auto', shadows: true, fov: 87, showFps: true,
     seenSplash: false,
   },
+  settingsVersion: 2,
 };
 
 function load() {
@@ -21,7 +22,7 @@ function load() {
     const raw = localStorage.getItem(KEY);
     if (!raw) return structuredClone(DEFAULTS);
     const d = JSON.parse(raw);
-    return {
+    const out = {
       name: typeof d.name === 'string' ? d.name : '',
       role: d.role === 'killer' ? 'killer' : 'survivor',
       loadouts: {
@@ -29,7 +30,12 @@ function load() {
         killer: sanitizeLoadout('killer', d.loadouts && d.loadouts.killer),
       },
       settings: { ...DEFAULTS.settings, ...(d.settings || {}) },
+      settingsVersion: DEFAULTS.settingsVersion,
     };
+    // version 2 added Auto quality as the new default: move saves that were
+    // still on the old default over to it
+    if (!(d.settingsVersion >= 2) && out.settings.quality === 'high') out.settings.quality = 'auto';
+    return out;
   } catch {
     return structuredClone(DEFAULTS);
   }
