@@ -209,6 +209,7 @@ class App {
       const el = this.loadingEl;
       el.style.transition = 'opacity 1.2s';
       el.style.opacity = '0';
+      el.style.pointerEvents = 'none';
       setTimeout(() => el.remove(), 1300);
       this.loadingEl = null;
     }
