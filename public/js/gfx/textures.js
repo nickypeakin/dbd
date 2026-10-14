@@ -442,3 +442,152 @@ export function lockerTexture() {
   cache.set('locker', t);
   return t;
 }
+
+// ------------------------------------------------------------ characters --
+// Grayscale detail maps, tinted by each material's colour.
+
+// Hair: fine strands running from the crown down (along v).
+export function hairTexture() {
+  if (cache.has('hair')) return cache.get('hair');
+  const r = rng(173), n = fbm(128, 171, 3, 4);
+  const strand = [];
+  for (let i = 0; i < 128; i++) strand.push(0.62 + r() * 0.38);
+  const { c } = pixelTexture(128, 1, (u, v, x) => {
+    const s = (strand[x] * 2 + strand[(x + 1) % 128] + strand[(x + 127) % 128]) / 4;
+    const k = 255 * Math.min(1, s * (0.86 + n(u, v) * 0.28));
+    return [k, k, k];
+  });
+  const t = finish(c);
+  cache.set('hair', t);
+  return t;
+}
+
+// Denim twill with a worn, faded look.
+export function denimTexture() {
+  if (cache.has('denim')) return cache.get('denim');
+  const n = fbm(128, 181, 3, 8);
+  const { c } = pixelTexture(128, 1, (u, v, x, y) => {
+    const twill = (x + y) % 4 < 2 ? 0.88 : 1.0;
+    const fade = 0.82 + n(u, v) * 0.36;
+    const fleck = (x * 7 + y * 13) % 23 === 0 ? 1.15 : 1;
+    const k = Math.min(255, 255 * twill * fade * fleck);
+    return [k, k, k];
+  });
+  const t = finish(c);
+  cache.set('denim', t);
+  return t;
+}
+
+// Skin: very soft blotches so faces don't look like plastic.
+export function skinTexture() {
+  if (cache.has('skin')) return cache.get('skin');
+  const n = fbm(128, 191, 4, 4);
+  const { c } = pixelTexture(128, 1, (u, v) => {
+    const k = 0.93 + n(u, v) * 0.07;
+    return [255 * k, 250 * k, 248 * k];
+  });
+  const t = finish(c);
+  cache.set('skin', t);
+  return t;
+}
+
+// Leather: creases and scuffs.
+export function leatherTexture() {
+  if (cache.has('leather')) return cache.get('leather');
+  const n = fbm(128, 201, 4, 4), m = fbm(128, 202, 3, 8);
+  const { c } = pixelTexture(128, 1, (u, v) => {
+    const crease = 1 - Math.max(0, 0.06 - Math.abs(m(u, v) - 0.5)) * 6;
+    const k = 255 * (0.72 + n(u, v) * 0.32) * crease;
+    return [k, k, k];
+  });
+  const t = finish(c);
+  cache.set('leather', t);
+  return t;
+}
+
+// Fur: dense streaks with dark roots.
+export function furTexture() {
+  if (cache.has('fur')) return cache.get('fur');
+  const r = rng(211), n = fbm(128, 212, 3, 4);
+  const strand = [];
+  for (let i = 0; i < 128; i++) strand.push(r());
+  const { c } = pixelTexture(128, 1, (u, v, x, y) => {
+    const s = strand[(x + Math.floor(n(u, v) * 9)) % 128];
+    const tip = ((y + Math.floor(s * 128)) % 32) / 32;
+    const k = 255 * (0.45 + s * 0.35 + tip * 0.25) * (0.8 + n(u, v) * 0.3);
+    return [Math.min(255, k), Math.min(255, k), Math.min(255, k)];
+  });
+  const t = finish(c);
+  cache.set('fur', t);
+  return t;
+}
+
+// Knitted wool (beanies, scarves): vertical rows of stitches.
+export function knitTexture(rx = 1, ry = 1) {
+  const key = `knit${rx}_${ry}`;
+  if (cache.has(key)) return cache.get(key);
+  if (!cache.has('knitCanvas')) {
+    const n = fbm(64, 221, 2, 4);
+    const { c } = pixelTexture(64, 1, (u, v, x, y) => {
+      const sx = (x % 8) / 8, sy = ((y + (x % 16 < 8 ? 0 : 4)) % 8) / 8;
+      const st = Math.max(0, 1 - Math.abs(sx - 0.5 + (sy - 0.5) * 0.6) * 3);
+      const k = 255 * (0.66 + st * 0.34) * (0.9 + n(u, v) * 0.15);
+      return [k, k, k];
+    });
+    cache.set('knitCanvas', c);
+  }
+  const t = finish(cache.get('knitCanvas'), { repeat: [rx, ry] });
+  cache.set(key, t);
+  return t;
+}
+
+// Loud patterned shirt: flowers and leaves on a base colour.
+export function floralTexture(base = '#8e2b2b', a = '#e8d6a0', b = '#2f5a3a') {
+  const key = 'floral' + base + a + b;
+  if (cache.has(key)) return cache.get(key);
+  const S = 256, c = canvas(S, S), ctx = c.getContext('2d');
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, S, S);
+  const r = rng(231);
+  const wrap = (fn, x, y) => { for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) fn(x + dx, y + dy); };
+  for (let i = 0; i < 26; i++) {
+    const x = r() * S, y = r() * S, rot = r() * Math.PI;
+    wrap((px, py) => {
+      ctx.save(); ctx.translate(px, py); ctx.rotate(rot);
+      ctx.fillStyle = b;
+      ctx.beginPath(); ctx.ellipse(0, 0, 22, 7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }, x, y);
+  }
+  for (let i = 0; i < 18; i++) {
+    const x = r() * S, y = r() * S, size = 9 + r() * 7;
+    wrap((px, py) => {
+      ctx.fillStyle = a;
+      for (let p = 0; p < 5; p++) {
+        const ang = (p / 5) * Math.PI * 2;
+        ctx.beginPath(); ctx.ellipse(px + Math.cos(ang) * size * 0.7, py + Math.sin(ang) * size * 0.7, size * 0.55, size * 0.35, ang, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = base;
+      ctx.beginPath(); ctx.arc(px, py, size * 0.28, 0, Math.PI * 2); ctx.fill();
+    }, x, y);
+  }
+  grime(ctx, S, 233, 0.2);
+  const t = finish(c);
+  cache.set(key, t);
+  return t;
+}
+
+// Dried blood splatter over a grayscale base (aprons, masks, weapons).
+export function bloodyTexture(seed = 241) {
+  const key = 'bloody' + seed;
+  if (cache.has(key)) return cache.get(key);
+  const n = fbm(128, seed, 4, 4), m = fbm(128, seed + 1, 3, 8);
+  const { c } = pixelTexture(128, 1, (u, v) => {
+    const base = 0.78 + m(u, v) * 0.22;
+    const b = Math.max(0, Math.min(1, (n(u, v) - 0.52) * 5));
+    return [255 * base * (1 - b * 0.35), 255 * base * (1 - b * 0.85), 255 * base * (1 - b * 0.85)];
+  });
+  const t = finish(c);
+  cache.set(key, t);
+  return t;
+}

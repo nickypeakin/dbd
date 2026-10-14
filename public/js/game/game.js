@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { renderer } from '../gfx/renderer.js';
 import { World, setLayerDeep } from '../gfx/world.js';
-import { createSurvivor, createKiller, survivorPose, killerPose, createWeapon, createChainsaw, createHatchet, createBell, mat } from '../gfx/models.js';
+import { createSurvivor, createKiller, survivorPose, killerPose, createWeapon, createChainsaw, createHatchet, createBell, createKillerArm } from '../gfx/models.js';
 import { Particles } from '../gfx/particles.js';
 import { scratchTexture, bloodTexture, glowTexture } from '../gfx/textures.js';
 import { HUD } from '../ui/hud.js';
@@ -140,14 +140,7 @@ export class Game {
     const vm = (this.vm = new THREE.Group());
     const char = this.myInfo.char;
     const k = KILLERS[char];
-    const arm = new THREE.Group();
-    const sleeve = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.32, 4, 8), mat(char === 'huntress' ? '#d6bfa8' : char === 'hillbilly' ? '#3e5070' : char === 'wraith' ? '#3a3731' : '#4b3b2b'));
-    sleeve.rotation.x = Math.PI / 2;
-    sleeve.position.set(0, 0, 0.12);
-    arm.add(sleeve);
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), mat(char === 'wraith' ? '#5a564d' : '#c9a88a'));
-    hand.position.set(0, 0, -0.1);
-    arm.add(hand);
+    const arm = createKillerArm(char);
     const weapon = createWeapon(char, 1.0);
     weapon.rotation.set(1.75, 0.15, 0);
     weapon.position.set(0, 0.02, -0.12);

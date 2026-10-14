@@ -121,6 +121,10 @@ docker run -p 3000:3000 dbd-fan
 - **Survivors:** Dwight, Meg, Claudette, Jake, Nea, David, Ace and Feng.
   Each has health states, bleeding, crawling, recovery, Exhaustion, and
   scratch marks and blood pools that killers can track.
+- **Character models:** every survivor and killer is sculpted in code, with
+  a face (eyes that blink, brows, nose, lips), hair and their own outfit,
+  such as Dwight's tie and badge, Ace's fedora, the Trapper's grinning mask
+  and the Huntress's rabbit mask.
 - **Killers:**
   - The Trapper (bear traps).
   - The Wraith (Wailing Bell cloak).
