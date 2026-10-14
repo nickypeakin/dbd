@@ -55,11 +55,18 @@ export class Input {
   }
 
   requestLock() {
+    // Browsers without raw mouse input reject the option, so retry plainly.
+    const plain = () => {
+      try {
+        const p = this.canvas.requestPointerLock();
+        if (p && p.catch) p.catch(() => {});
+      } catch {}
+    };
     try {
       const p = this.canvas.requestPointerLock({ unadjustedMovement: true });
-      if (p && p.catch) p.catch(() => { try { this.canvas.requestPointerLock(); } catch {} });
+      if (p && p.catch) p.catch(plain);
     } catch {
-      try { this.canvas.requestPointerLock(); } catch {}
+      plain();
     }
   }
 

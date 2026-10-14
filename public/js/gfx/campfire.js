@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { renderer, createSky } from './renderer.js';
 import { groundTexture, barkTexture, rockTexture, glowTexture, grassTuftTexture } from './textures.js';
 import { createCampfire, createLog, deadTreeGeometry, rockGeometry, mulberry } from './props.js';
-import { createSurvivor, createKiller, survivorPose, killerPose, mat } from './models.js';
+import { createSurvivor, createKiller, survivorPose, killerPose, mat, disposeRig } from './models.js';
 import { Particles } from './particles.js';
 import { audio } from '../audio.js';
 
@@ -149,11 +149,11 @@ export class CampfireScene {
       const want = slots[i];
       const cur = this.slots[i];
       if (!want) {
-        if (cur) { this.scene.remove(cur.rig.root); this.slots[i] = null; }
+        if (cur) { this.scene.remove(cur.rig.root); disposeRig(cur.rig); this.slots[i] = null; }
         continue;
       }
       if (!cur || cur.char !== want.character) {
-        if (cur) this.scene.remove(cur.rig.root);
+        if (cur) { this.scene.remove(cur.rig.root); disposeRig(cur.rig); }
         const rig = createSurvivor(want.character);
         const seat = SEATS[i];
         rig.root.position.set(Math.sin(seat.a) * seat.r, 0, Math.cos(seat.a) * seat.r);
@@ -165,7 +165,7 @@ export class CampfireScene {
     }
     if (killer) {
       if (!this.killer || this.killerId !== killer.character) {
-        if (this.killer) this.scene.remove(this.killer.root);
+        if (this.killer) { this.scene.remove(this.killer.root); disposeRig(this.killer); }
         this.killer = createKiller(killer.character);
         this.killer.root.position.set(-5.4, 0, -7.6);
         this.killer.root.rotation.y = 0.55;
@@ -175,6 +175,7 @@ export class CampfireScene {
       this.killerInfo = killer;
     } else if (this.killer) {
       this.scene.remove(this.killer.root);
+      disposeRig(this.killer);
       this.killer = null;
       this.killerId = null;
     }

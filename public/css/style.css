@@ -336,6 +336,8 @@ input, select, textarea { font-family: var(--body); }
 }
 
 /* ------------------------------------------------------------- HUD */
+/* #ui > .hud beats the #ui > * rule above, so clicks fall through to the game canvas. */
+#ui > .hud { pointer-events: none; }
 .hud { position: absolute; inset: 0; pointer-events: none; font-family: var(--head); }
 .hud * { pointer-events: none; }
 .hud .clickable, .hud .clickable * { pointer-events: auto; }
